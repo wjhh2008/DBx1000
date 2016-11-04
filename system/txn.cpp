@@ -40,6 +40,13 @@ void txn_man::init(thread_t * h_thd, workload * h_wl, uint64_t thd_id) {
 	_cur_tid = 0;
 #endif
 
+#ifdef RCC
+    predicates = (Predicate **) _mm_malloc(sizeof(Predicate *) * MAX_ROW_PER_TXN, 64);
+    for (int i = 0; i < MAX_ROW_PER_TXN; i++)
+        predicates[i] = NULL;
+    ret_c = RCOK;
+#endif
+
 }
 
 void txn_man::set_txn_id(txnid_t txn_id) {

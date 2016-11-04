@@ -23,6 +23,14 @@ void Manager::init() {
 	}
 	for (UInt32 i = 0; i < BUCKET_CNT; i++)
 		pthread_mutex_init( &mutexes[i], NULL );
+
+#ifdef RCC
+    st = 0;
+    ed = 0;
+    recent_txns = (txn_man **) __mm_malloc(sizeof(txn_man *) * 100000, 64);
+    for (uint32_t i = 0; i < 100000; i++)
+      recent_txns[i] = NULL;
+#endif
 }
 
 uint64_t 
@@ -111,3 +119,38 @@ Manager::update_epoch()
 		*_last_epoch_update_time = time;
 	}
 }
+
+#ifdef RCC
+uint64_t
+Manager::add_recent_txn(txn_man * txn) {
+    uint64_t pos;
+    pos = ATOM_FETCH_ADD(ed, 1);
+    recent_txns[pos] = txn;
+    return pos;
+}
+
+uint64_t
+Manager::get_last_txn()
+{
+    return ed;
+}
+
+bool
+Manager::validate_txn(Predicate * pred, uint64_t pos)
+{
+    ASSERT(pos <= ed);
+    for (uint64_t i = pred->ts; i < pos; i++)
+    {
+      for (int j = 0; j < recent_txns[i]->row_cnt; j++) {
+        Access * access = recent_txns[i]->accesses[j];
+        if (access->type == WR
+            && access->orig_row->get_primary_key() >= pred->st_row_key
+            && access->orig_row->get_primary_key() <= pred->ed_row_key)
+        {
+          return false;
+        }
+      }
+    }
+    return true;
+}
+#endif

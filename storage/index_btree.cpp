@@ -82,8 +82,8 @@ index_btree::index_read(idx_key_t key,
 	return index_read(key, item, 0, part_id);
 }
 
-RC index_btree::index_read(idx_key_t key, itemid_t *& item, 
-	uint64_t thd_id, int64_t part_id) 
+RC index_btree::index_read(idx_key_t key, itemid_t *& item, int part_id,
+    int thd_id)
 {
 	RC rc = Abort;
 	glob_param params;
@@ -491,7 +491,7 @@ RC index_btree::insert_into_parent(
 		insert_idx ++;
 	// the parent has enough space, just insert into it
     if (parent->num_keys < order - 1) {
-		for (UInt32 i = parent->num_keys-1; i >= insert_idx; i--) {
+        for (UInt32 i = parent->num_keys-1; i >= insert_idx && i+1!=0; i--) {
 			parent->keys[i + 1] = parent->keys[i];
 			parent->pointers[i+2] = parent->pointers[i+1];
 		}

@@ -26,6 +26,12 @@ public:
 	
 	uint64_t 		get_epoch() { return *_epoch; };
 	void 	 		update_epoch();
+#ifdef RCC
+    uint64_t        add_recent_txn(txn_man * txn);
+    void            garbage_txn();
+    uint64_t        get_last_txn();
+    bool            validate_txn(Predicate *pred, uint64_t pos);
+#endif
 private:
 	// for SILO
 	volatile uint64_t * _epoch;		
@@ -40,4 +46,8 @@ private:
 	// for MVCC 
 	volatile ts_t	_last_min_ts_time;
 	ts_t			_min_ts;
+#ifdef RCC
+    uint64_t        st, ed;
+    txn_man **      recent_txns;
+#endif
 };

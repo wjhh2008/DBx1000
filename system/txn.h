@@ -35,6 +35,15 @@ public:
 
 };
 
+#ifdef RCC
+class Predicate {
+public:
+  uint64_t      st_row_key;
+  uint64_t      ed_row_key;
+  uint64_t      ts;
+};
+#endif
+
 class txn_man
 {
 public:
@@ -91,6 +100,13 @@ public:
 	itemid_t *		index_read(INDEX * index, idx_key_t key, int part_id);
 	void 			index_read(INDEX * index, idx_key_t key, int part_id, itemid_t *& item);
 	row_t * 		get_row(row_t * row, access_t type);
+#ifdef RCC
+    Predicate **    predicates;
+    //Access **		pred_accesses;
+    //uint64_t        pred_acc_cnt;
+    uint64_t        pred_cnt;
+    RC              ret_c;
+#endif
 protected:	
 	void 			insert_row(row_t * row, table_t * table);
 private:

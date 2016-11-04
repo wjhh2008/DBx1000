@@ -113,6 +113,9 @@ txn_man::validate_silo()
 			}
 		}
 	}
+#ifdef RCC
+    int validate_en = glob_manager->add_recent_txn(this);
+#endif
 
 	// validate rows in the read set
 #if ISOLATION_LEVEL != REPEATABLE_READ
@@ -127,6 +130,17 @@ txn_man::validate_silo()
 		if (access->tid > max_tid)
 			max_tid = access->tid;
 	}
+
+#ifdef RCC
+    for (uint64_t i = 0; i < pred_cnt; i++) {
+        bool success = glob_manager->validate_txn(predicates[i], validate_en);
+        if (!success) {
+            rc = Abort;
+            goto final;
+        }
+    }
+#endif
+
 #endif
 	// validate rows in the write set
 	for (int i = 0; i < wr_cnt; i++) {
@@ -147,15 +161,19 @@ final:
 	if (rc == Abort) {
 		for (int i = 0; i < num_locks; i++) 
 			accesses[ write_set[i] ]->orig_row->manager->release();
-		cleanup(rc);
+#ifndef RCC
+        cleanup(rc);
+#endif
 	} else {
 		for (int i = 0; i < wr_cnt; i++) {
 			Access * access = accesses[ write_set[i] ];
 			access->orig_row->manager->write( 
 				access->data, _cur_tid );
 			accesses[ write_set[i] ]->orig_row->manager->release();
-		}
-		cleanup(rc);
+		}        
+#ifndef RCC
+        cleanup(rc);
+#endif
 	}
 	return rc;
 }
