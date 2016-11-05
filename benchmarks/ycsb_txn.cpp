@@ -37,16 +37,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 		bool finish_req = false;
 		UInt32 iteration = 0;
 #ifdef RCC
-        access_t type = req->rtype;
-        Predicate * pred = NULL;
-        if (type == SCAN) {
-            if (predicates[pred_cnt] == NULL)
-              predicates[pred_cnt] = (Predicate *) _mm_malloc(sizeof(Predicate), 64);
-            pred = predicates[pred_cnt];
-            pred_cnt++;
-            pred->st_row_key = req->key;
-            pred->ts = glob_manager->get_last_txn();
-        }
+        UInt64  st_ut_id = glob_manager->get_unit_id(req->key);
 #endif
 		while ( !finish_req ) {
 			if (iteration == 0) {
@@ -67,12 +58,12 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 #endif
 			row_t * row = ((row_t *)m_item->location);
             row_t * row_local;
-#ifndef RCC
 			access_t type = req->rtype;
-#endif
 #ifdef RCC
             if (type == SCAN)
+            {
               row_local = row;
+            }
             else
 #endif
 			row_local = get_row(row, type);
@@ -106,9 +97,24 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 				finish_req = true;
 		}
 #ifdef RCC
-        if (type == SCAN) {
+        if (req->rtype == SCAN) {
             ASSERT(m_item != NULL);
-            pred->ed_row_key = ((row_t *)m_item->location)->get_primary_key();
+            UInt64 last_primary_key = ((row_t *)m_item->location)->get_primary_key();
+            UInt64  ed_ut_id = glob_manager->get_unit_id(last_primary_key);
+            ASSERT(ed_ut_id >= st_ut_id);
+            for (UInt64 ut_id = st_ut_id; ut_id <= ed_ut_id; ut_id++) {
+                Predicate * pred = get_new_pred();
+                pred->ut_id = ut_id;
+                pred->ts = glob_manager->get_rcc_unit(ut_id)->get_last_txn();
+                pred->st_row_key = ut_id * UNIT_LEN;
+                pred->ed_row_key = (ut_id + 1) * UNIT_LEN - 1;
+                if (ut_id == st_ut_id)
+                    pred->st_row_key = req->key;
+                if (ut_id == ed_ut_id)
+                  pred->ed_row_key = last_primary_key;
+                ASSERT(pred->ed_row_key >= pred->st_row_key);
+                pred->whole_unit = (pred->ed_row_key - pred->st_row_key == UNIT_LEN - 1);
+            }
         }
 #endif
 	}

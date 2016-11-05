@@ -116,10 +116,10 @@
 #define INIT_PARALLELISM			1
 #define SYNTH_TABLE_SIZE 			(1024 * 1024 * 10)
 #define ZIPF_THETA 					0.6
-#define READ_PERC 					0.5
-#define WRITE_PERC 					0.1
-#define SCAN_PERC 					0.4
-#define SCAN_LEN					20
+#define READ_PERC 					0
+#define WRITE_PERC 					0.5
+#define SCAN_PERC 					0.5
+#define SCAN_LEN					100
 #define PART_PER_TXN 				1
 #define PERC_MULTI_PART				1
 #define REQ_PER_QUERY				16
@@ -216,5 +216,8 @@ extern TestCases					g_test_case;
 #define TS_CLOCK					4
 
 #define RCC
+#define UNIT_CNT                    1024
+#define UNIT_LEN                    SYNTH_TABLE_SIZE / UNIT_CNT
+#define RCCUNIT_MAXTXN_CNT          10000
 
 #endif

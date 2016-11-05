@@ -3,6 +3,8 @@
 #include "global.h"
 #include "helper.h"
 
+#include "manager.h"
+
 class workload;
 class thread_t;
 class row_t;
@@ -41,6 +43,8 @@ public:
   uint64_t      st_row_key;
   uint64_t      ed_row_key;
   uint64_t      ts;
+  uint64_t      ut_id;
+  bool          whole_unit;
 };
 #endif
 
@@ -103,9 +107,11 @@ public:
 #ifdef RCC
     Predicate **    predicates;
     //Access **		pred_accesses;
-    //uint64_t        pred_acc_cnt;
+    //uint64_t      pred_acc_cnt;
     uint64_t        pred_cnt;
     RC              ret_c;
+    Predicate *     get_new_pred();
+    ts_t            pre_commit_ts;
 #endif
 protected:	
 	void 			insert_row(row_t * row, table_t * table);

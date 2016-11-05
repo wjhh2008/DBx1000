@@ -245,3 +245,17 @@ txn_man::release() {
 		mem_allocator.free(accesses[i], 0);
 	mem_allocator.free(accesses, 0);
 }
+
+#ifdef RCC
+Predicate *
+txn_man::get_new_pred()
+{
+  Predicate * pred = NULL;
+  if (predicates[pred_cnt] == NULL)
+    predicates[pred_cnt] = (Predicate *) _mm_malloc(sizeof(Predicate), 64);
+  pred = predicates[pred_cnt];
+  pred_cnt++;
+  return pred;
+}
+
+#endif

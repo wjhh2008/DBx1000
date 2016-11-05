@@ -5,6 +5,25 @@
 
 class row_t;
 class txn_man;
+class Predicate;
+
+#ifdef RCC
+class RccUnit {
+public:
+
+    void            init();
+    uint64_t        add_recent_txn(txn_man * txn);
+    void            garbage_txn();
+    uint64_t        get_last_txn();
+    bool            validate_txn(Predicate *pred, ts_t ts);
+
+private:
+
+    uint64_t        st, ed;
+    txn_man **      recent_txns;
+
+};
+#endif
 
 class Manager {
 public:
@@ -26,11 +45,10 @@ public:
 	
 	uint64_t 		get_epoch() { return *_epoch; };
 	void 	 		update_epoch();
+
 #ifdef RCC
-    uint64_t        add_recent_txn(txn_man * txn);
-    void            garbage_txn();
-    uint64_t        get_last_txn();
-    bool            validate_txn(Predicate *pred, uint64_t pos);
+    uint64_t        get_unit_id(UInt64 key);
+    RccUnit *       get_rcc_unit(UInt64 ut_id);
 #endif
 private:
 	// for SILO
@@ -46,8 +64,9 @@ private:
 	// for MVCC 
 	volatile ts_t	_last_min_ts_time;
 	ts_t			_min_ts;
+
 #ifdef RCC
-    uint64_t        st, ed;
-    txn_man **      recent_txns;
+    RccUnit **      rcc_unit;
 #endif
+
 };

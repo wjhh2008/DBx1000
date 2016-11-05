@@ -24,6 +24,10 @@ txn_man::validate_silo()
 #endif
 	}
 
+#ifdef RCC
+    UInt64 last_ut_id = UINT64_MAX;
+#endif
+
 	// bubble sort the write_set, in primary key order 
 	for (int i = wr_cnt - 1; i >= 1; i--) {
 		for (int j = 0; j < i; j++) {
@@ -58,6 +62,7 @@ txn_man::validate_silo()
 		}
 #endif
 	}
+
 
 	// lock all rows in the write set.
 	if (_validation_no_wait) {
@@ -99,10 +104,17 @@ txn_man::validate_silo()
 					}
 #endif
 				}
+#ifdef RCC
+                else
+                  ASSERT(false);
+#endif
 				usleep(1);
 			}
 		}
 	} else {
+#ifdef RCC
+        ASSERT(false);
+#endif
 		for (int i = 0; i < wr_cnt; i++) {
 			row_t * row = accesses[ write_set[i] ]->orig_row;
 			row->manager->lock();
@@ -114,7 +126,17 @@ txn_man::validate_silo()
 		}
 	}
 #ifdef RCC
-    int validate_en = glob_manager->add_recent_txn(this);
+    pre_commit_ts = get_sys_clock();
+    for (int i = 0; i < wr_cnt; i++) {
+        row_t * row = accesses[ write_set[i] ]->orig_row;
+        UInt64 ut_id = glob_manager->get_unit_id(row->get_primary_key());
+        if (ut_id != last_ut_id) {
+            last_ut_id = ut_id;
+            glob_manager->get_rcc_unit(ut_id)->add_recent_txn(this);
+        }
+    }
+
+
 #endif
 
 	// validate rows in the read set
@@ -133,7 +155,8 @@ txn_man::validate_silo()
 
 #ifdef RCC
     for (uint64_t i = 0; i < pred_cnt; i++) {
-        bool success = glob_manager->validate_txn(predicates[i], validate_en);
+        Predicate * pred = predicates[i];
+        bool success = glob_manager->get_rcc_unit(pred->ut_id)->validate_txn(pred, pre_commit_ts);
         if (!success) {
             rc = Abort;
             goto final;
@@ -161,9 +184,7 @@ final:
 	if (rc == Abort) {
 		for (int i = 0; i < num_locks; i++) 
 			accesses[ write_set[i] ]->orig_row->manager->release();
-#ifndef RCC
         cleanup(rc);
-#endif
 	} else {
 		for (int i = 0; i < wr_cnt; i++) {
 			Access * access = accesses[ write_set[i] ];
@@ -171,9 +192,7 @@ final:
 				access->data, _cur_tid );
 			accesses[ write_set[i] ]->orig_row->manager->release();
 		}        
-#ifndef RCC
         cleanup(rc);
-#endif
 	}
 	return rc;
 }

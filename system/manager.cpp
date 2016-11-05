@@ -23,13 +23,13 @@ void Manager::init() {
 	}
 	for (UInt32 i = 0; i < BUCKET_CNT; i++)
 		pthread_mutex_init( &mutexes[i], NULL );
-
 #ifdef RCC
-    st = 0;
-    ed = 0;
-    recent_txns = (txn_man **) __mm_malloc(sizeof(txn_man *) * 100000, 64);
-    for (uint32_t i = 0; i < 100000; i++)
-      recent_txns[i] = NULL;
+    rcc_unit = (RccUnit **) _mm_malloc(sizeof(RccUnit *) * UNIT_CNT, 64);
+    for (UInt32 i = 0; i < UNIT_CNT; i++) {
+        rcc_unit[i] = (RccUnit *) _mm_malloc(sizeof(RccUnit), 64);
+        rcc_unit[i]->init();
+    }
+
 #endif
 }
 
@@ -121,8 +121,19 @@ Manager::update_epoch()
 }
 
 #ifdef RCC
+
+void
+RccUnit::init() {
+
+    st = 0;
+    ed = 0;
+    recent_txns = (txn_man **) _mm_malloc(sizeof(txn_man *) * RCCUNIT_MAXTXN_CNT, 64);
+    memset(recent_txns, 0, sizeof(txn_man *) * RCCUNIT_MAXTXN_CNT);
+
+}
+
 uint64_t
-Manager::add_recent_txn(txn_man * txn) {
+RccUnit::add_recent_txn(txn_man * txn) {
     uint64_t pos;
     pos = ATOM_FETCH_ADD(ed, 1);
     recent_txns[pos] = txn;
@@ -130,17 +141,25 @@ Manager::add_recent_txn(txn_man * txn) {
 }
 
 uint64_t
-Manager::get_last_txn()
+RccUnit::get_last_txn()
 {
     return ed;
 }
 
 bool
-Manager::validate_txn(Predicate * pred, uint64_t pos)
+RccUnit::validate_txn(Predicate * pred, ts_t ts)
 {
-    ASSERT(pos <= ed);
-    for (uint64_t i = pred->ts; i < pos; i++)
+    if (pred->whole_unit)
     {
+        if (ed > pred->ts)
+          return false;
+        else
+          return true;
+    }
+    for (uint64_t i = pred->ts; i < ed; i++)
+    {
+      if (recent_txns[i]->pre_commit_ts > ts)
+        break;
       for (int j = 0; j < recent_txns[i]->row_cnt; j++) {
         Access * access = recent_txns[i]->accesses[j];
         if (access->type == WR
@@ -153,4 +172,18 @@ Manager::validate_txn(Predicate * pred, uint64_t pos)
     }
     return true;
 }
+
+uint64_t
+Manager::get_unit_id(UInt64 key)
+{
+    ASSERT(key < SYNTH_TABLE_SIZE);
+    return key / UNIT_LEN;
+}
+RccUnit *
+Manager::get_rcc_unit(UInt64 ut_id)
+{
+  ASSERT(ut_id < UNIT_CNT);
+  return rcc_unit[ut_id];
+}
+
 #endif
