@@ -134,9 +134,11 @@ RccUnit::init() {
 
 uint64_t
 RccUnit::add_recent_txn(txn_man * txn) {
-    uint64_t pos;
-    pos = ATOM_FETCH_ADD(ed, 1);
-    recent_txns[pos] = txn;
+    //uint64_t pos;
+    //pos = ATOM_FETCH_ADD(ed, 1);
+    pthread_mutex_lock( &latch );
+    recent_txns[ed++] = txn;
+    pthread_mutex_unlock( &latch );
     return pos;
 }
 

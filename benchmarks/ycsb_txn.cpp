@@ -38,6 +38,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 		UInt32 iteration = 0;
 #ifdef RCC
         UInt64  st_ut_id = glob_manager->get_unit_id(req->key);
+        itemid_t * last_item = NULL;
 #endif
 		while ( !finish_req ) {
 			if (iteration == 0) {
@@ -47,8 +48,9 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 			else {
 				_wl->the_index->index_next(get_thd_id(), m_item);
 				if (m_item == NULL)
-					break;
+                    break;
 			}
+
 #elif INDEX_STRUCT == IDX_HASH
             else {
                 if (req->key + iteration >= SYNTH_TABLE_SIZE)
@@ -60,6 +62,7 @@ RC ycsb_txn_man::run_txn(base_query * query) {
             row_t * row_local;
 			access_t type = req->rtype;
 #ifdef RCC
+            last_item = m_item;
             if (type == SCAN)
             {
               row_local = row;
@@ -98,8 +101,8 @@ RC ycsb_txn_man::run_txn(base_query * query) {
 		}
 #ifdef RCC
         if (req->rtype == SCAN) {
-            ASSERT(m_item != NULL);
-            UInt64 last_primary_key = ((row_t *)m_item->location)->get_primary_key();
+            ASSERT(last_item != NULL);
+            UInt64 last_primary_key = ((row_t *)last_item->location)->get_primary_key();
             UInt64  ed_ut_id = glob_manager->get_unit_id(last_primary_key);
             ASSERT(ed_ut_id >= st_ut_id);
             for (UInt64 ut_id = st_ut_id; ut_id <= ed_ut_id; ut_id++) {

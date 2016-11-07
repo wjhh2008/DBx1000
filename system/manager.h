@@ -21,6 +21,7 @@ private:
 
     uint64_t        st, ed;
     txn_man **      recent_txns;
+    pthread_mutex_t latch;
 
 };
 #endif
