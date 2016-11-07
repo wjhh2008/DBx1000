@@ -127,18 +127,19 @@ RccUnit::init() {
 
     st = 0;
     ed = 0;
-    recent_txns = (txn_man **) _mm_malloc(sizeof(txn_man *) * RCCUNIT_MAXTXN_CNT, 64);
-    memset(recent_txns, 0, sizeof(txn_man *) * RCCUNIT_MAXTXN_CNT);
+    recent_txns = (txn_man **) _mm_malloc(sizeof(volatile txn_man *) * RCCUNIT_MAXTXN_CNT, 64);
+    memset(recent_txns, 0, sizeof(volatile txn_man *) * RCCUNIT_MAXTXN_CNT);
 
 }
 
 uint64_t
 RccUnit::add_recent_txn(txn_man * txn) {
-    //uint64_t pos;
-    //pos = ATOM_FETCH_ADD(ed, 1);
-    pthread_mutex_lock( &latch );
-    recent_txns[ed++] = txn;
-    pthread_mutex_unlock( &latch );
+    uint64_t pos;
+    pos = ATOM_FETCH_ADD(ed, 1);
+    ASSERT(ed < RCCUNIT_MAXTXN_CNT);
+    //pthread_mutex_lock( &latch );
+    recent_txns[pos] = txn;
+    //pthread_mutex_unlock( &latch );
     return pos;
 }
 
@@ -153,13 +154,19 @@ RccUnit::validate_txn(Predicate * pred, ts_t ts)
 {
     if (pred->whole_unit)
     {
-        if (ed > pred->ts)
+        if (ed >= pred->ts && recent_txns[pred->ts]->pre_commit_ts < ts)
           return false;
         else
           return true;
     }
-    for (uint64_t i = pred->ts; i < ed; i++)
+    UInt64 now = ed;
+    for (uint64_t i = pred->ts; i < now; i++)
     {
+
+      if (recent_txns[i] == NULL)
+        break;
+      if (recent_txns[i]->ret_c == Abort)
+        continue;
       if (recent_txns[i]->pre_commit_ts > ts)
         break;
       for (int j = 0; j < recent_txns[i]->row_cnt; j++) {

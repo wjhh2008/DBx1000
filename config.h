@@ -217,7 +217,7 @@ extern TestCases					g_test_case;
 
 #define RCC
 #define UNIT_CNT                    1024
-#define UNIT_LEN                    SYNTH_TABLE_SIZE / UNIT_CNT
-#define RCCUNIT_MAXTXN_CNT          10000
+#define UNIT_LEN                    (SYNTH_TABLE_SIZE / UNIT_CNT)
+#define RCCUNIT_MAXTXN_CNT          1000000
 
 #endif
